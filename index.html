@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>focus — irregular interactive glow</title>
+  <title>focus — interactive liquid glow</title>
   <style>
     html,body{height:100%;margin:0}
     body{
@@ -14,6 +14,7 @@
       -webkit-font-smoothing:antialiased;
       -moz-osx-font-smoothing:grayscale;
       overflow:hidden;
+      cursor:none;
     }
 
     .wrap{position:relative;display:inline-block;text-align:center;}
@@ -21,37 +22,51 @@
     h1{
       margin:0;
       color:#fff;
-      font-family: roboto;
+      font-weight:600;
       font-size:clamp(48px,12vw,160px);
       letter-spacing:0.02em;
       position:relative;
       z-index:2;
       user-select:none;
+      pointer-events:none;
     }
 
-    /* irregular glow shape using multiple gradients */
+    /* Irregular animated glow */
     .glow{
       position:absolute;
       left:50%;top:50%;
       width:calc(min(80vw,900px));
       height:calc(min(40vw,300px));
-      border-radius: 40% 20% 65% 75% / 55% 20% 60% 15% / 20% 10% 80% 50%; /* irregular shape */
+      border-radius:40% 60% 70% 50% / 60% 30% 70% 40%;
       background:
         radial-gradient(circle at 30% 40%, rgba(35,150,255,0.8), rgba(10,30,60,0) 70%),
         radial-gradient(circle at 10% 60%, rgba(80,200,255,0.6), rgba(10,30,30,0) 80%),
         radial-gradient(circle at 50% 50%, rgba(30,100,255,0.5), rgba(10,30,60,0) 100%);
-      filter:blur(45px) saturate(180%);
+      filter:blur(50px) saturate(180%) contrast(130%);
       mix-blend-mode:screen;
-      transition:transform 0.1s ease-out;
       z-index:1;
       pointer-events:none;
+      transition:border-radius 0.4s ease;
     }
 
     .vignette{
       position:fixed;inset:0;pointer-events:none;
-      background:radial-gradient(1000px 600px at 50% 45%,rgba(0,0,0,0) 60%,rgba(0,0,0,0.4) 100%);
+      background:radial-gradient(1000px 600px at 50% 45%,rgba(0,0,0,0) 60%,rgba(0,0,0,0.45) 100%);
       mix-blend-mode:multiply;
       z-index:3;
+    }
+
+    /* Optional: subtle mouse indicator */
+    .cursor {
+      position: fixed;
+      top: 0; left: 0;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: rgba(0,150,255,0.4);
+      pointer-events: none;
+      mix-blend-mode: screen;
+      filter: blur(6px);
+      z-index: 4;
     }
   </style>
 </head>
@@ -61,19 +76,56 @@
     <h1>focus</h1>
   </div>
   <div class="vignette"></div>
-  <script>
-    const glow=document.getElementById('glowEl');
-    let windowW=window.innerWidth,windowH=window.innerHeight;
-    window.addEventListener('resize',()=>{windowW=window.innerWidth;windowH=window.innerHeight;});
+  <div class="cursor" id="cursor"></div>
 
-    // interactive motion with stronger response from sides
-    window.addEventListener('mousemove',e=>{
-      const percentX=e.clientX/windowW - 0.5;
-      const percentY=e.clientY/windowH - 0.5;
-      const moveX=percentX*200; // stronger horizontal movement
-      const moveY=percentY*100;
-      glow.style.transform=`translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px)) rotate(${percentX*10}deg)`;
+  <script>
+    const glow = document.getElementById('glowEl');
+    const cursor = document.getElementById('cursor');
+    let w = window.innerWidth, h = window.innerHeight;
+
+    // mouse tracking variables
+    let targetX = 0, targetY = 0, currentX = 0, currentY = 0;
+    window.addEventListener('resize', () => { w = window.innerWidth; h = window.innerHeight; });
+
+    window.addEventListener('mousemove', e => {
+      targetX = e.clientX;
+      targetY = e.clientY;
     });
+
+    function animate() {
+      // easing motion for glow lag
+      currentX += (targetX - currentX) * 0.08;
+      currentY += (targetY - currentY) * 0.08;
+      const px = currentX / w - 0.5;
+      const py = currentY / h - 0.5;
+
+      const moveX = px * 250;
+      const moveY = py * 120;
+
+      // translate glow and rotate slightly
+      glow.style.transform = `translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px)) rotate(${px * 10}deg)`;
+
+      // wobble shape dynamically
+      const r1 = 40 + Math.sin(Date.now() / 500) * 10 + px * 10;
+      const r2 = 60 + Math.cos(Date.now() / 600) * 10 - py * 10;
+      const r3 = 70 + Math.sin(Date.now() / 400 + 1) * 8;
+      const r4 = 50 + Math.cos(Date.now() / 700 + 2) * 12;
+      glow.style.borderRadius = `${r1}% ${r2}% ${r3}% ${r4}% / ${r2}% ${r4}% ${r1}% ${r3}%`;
+
+      // move gradient focal points slightly
+      glow.style.background = `
+        radial-gradient(circle at ${30 + px * 20}% ${40 + py * 15}%, rgba(35,150,255,0.9), rgba(10,30,60,0) 70%),
+        radial-gradient(circle at ${10 - px * 10}% ${60 - py * 10}%, rgba(80,200,255,0.6), rgba(10,30,30,0) 80%),
+        radial-gradient(circle at ${50 + px * 5}% ${50 + py * 10}%, rgba(30,100,255,0.5), rgba(10,30,60,0) 100%)
+      `;
+
+      // move cursor
+      cursor.style.transform = `translate(${currentX - 10}px, ${currentY - 10}px)`;
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
   </script>
 </body>
 </html>
